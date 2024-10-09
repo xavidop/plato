@@ -72,9 +72,13 @@ async def generate_text_answer(request):
     response.raise_for_status()
     message = ""
     for trace in response.json():
-        print(trace)
+        #print(trace)
         if trace['type'] == 'text':
-            message += trace['payload']['message']
+            message += trace['payload']['message'] + "\n"
+        if trace['type'] == 'trace':
+            custom_action = trace['payload']['name']
+            cl.user_session.set("detection_mode", custom_action)
+            print(custom_action)
     return message
 
 @cl.step(type="tool", name="Text to Speech (Elevelabs)")
@@ -185,7 +189,12 @@ def image_to_text(image_path):
     "Content-Type": "application/json",
     "Authorization": f"Bearer {OPENAI_API_KEY}"
     }
-
+    
+    prompt = "You are a food assistant. Please help me identify the food in the image. If there are multiple foods, please list them all. If there are dividers, please list them as well."
+    detection_mode = cl.user_session.get("detection_mode")
+    if detection_mode == "leftovers_detection_prompt":
+        prompt = "You are a food assistant. Please help me identify the food in the image. If there are multiple foods, please list them all. If there are dividers, please list them as well. If there is a person in the image that seems that he/she stop eating and there are leftovers in the plate, please list the leftovers (there was chicken, Broccoli and strawberry). For the leftovers, please list them in the order of the most eaten to the least eaten and specify the amount of leftovers."
+    
     payload = {
     "model": "gpt-4o",
     "messages": [
@@ -194,7 +203,7 @@ def image_to_text(image_path):
         "content": [
             {
             "type": "text",
-            "text": "You are a food assistant. Please help me identify the food in the image. If there are multiple foods, please list them all. If there are dividers, please list them as well. If it is a plate that has leftovers, please list the leftovers."
+            "text": prompt
             },
             {
             "type": "image_url",
@@ -221,11 +230,9 @@ async def on_message(message: cl.Message):
     if has_iamge:
         # Processing images exclusively
         images = [file for file in message.elements if "image" in file.mime]
-        print(images)
         # Read the first image
         with open(images[0].path, "r") as f:
             message_text = image_to_text(images[0].path)
-            print(message_text)
             pass
     
     text_answer = await generate_text_answer( { 'type': 'text', 'payload': message_text })
