@@ -66,7 +66,7 @@ async def generate_text_answer(request):
         json={ 'request': request },
         headers={ 
             'Authorization': VOICEFLOW_API_KEY,
-            'versionID': 'production'
+            'versionID': 'development'
         },
     )
     response.raise_for_status()
@@ -116,7 +116,6 @@ async def text_to_speech(text: str, mime_type: str):
 @cl.on_chat_start
 async def start():
     response = await generate_text_answer({ 'type': 'launch' })
-    response = await generate_text_answer( { 'type': 'text', 'payload': 'hi' })
     await cl.Message(
         content=response
     ).send()
